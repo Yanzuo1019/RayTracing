@@ -1,4 +1,13 @@
+#include <iostream>
+
 #include "scene.h"
+
+float Schlick(glm::vec3 normal, glm::vec3 incident, float ref_idx) {
+	float cosine = glm::dot(-incident, normal);
+	float r0 = (1 - ref_idx) / (1 + ref_idx);
+	r0 = r0 * r0;
+	return r0 + (1 - r0) * float(pow((1 - cosine), 5));
+}
 
 Scene::~Scene() {
 	for (auto ptr : _spheres) {
@@ -41,50 +50,54 @@ glm::vec3 Scene::shade(const Sphere& sphere, glm::vec3 fragPos, const Ray& ray) 
 glm::vec3 Scene::traceRay(const Ray& ray, int recursionTime) {
 	glm::vec3 lightIntensity(0.0f);
 
-	// µÝ¹é´ÎÊý´ïµ½×î´ó
+	// é€’å½’æ¬¡æ•°è¾¾åˆ°æœ€å¤§
 	if (recursionTime >= MAX_RECURSION_TIME) {
 		return lightIntensity;
 	}
 
-	// ¼ÆËã¹âÏßÓë×î½üÎïÌåµÄ½»µã
+	// è®¡ç®—å…‰çº¿ä¸Žæœ€è¿‘ç‰©ä½“çš„äº¤ç‚¹
 	const auto& pointAndSphere = getIntersection(ray);
 	const Sphere* collidedSpherePtr = pointAndSphere.second;
 
-	// Èô¹âÏßÃ»ÓÐÕÕÉäµ½ÎïÌåÉÏÖ±½Ó·µ»Ø
+	// è‹¥å…‰çº¿æ²¡æœ‰ç…§å°„åˆ°ç‰©ä½“ä¸Šç›´æŽ¥è¿”å›ž
 	if (collidedSpherePtr == nullptr) {
-		return lightIntensity;
+		if (ray.direction().y != ray.direction().y) return lightIntensity;
+		float t = 0.5 * (ray.direction().y + 1.0);
+		return (1.0f - t) * glm::vec3(1.0f, 1.0f, 1.0f) + t * glm::vec3(0.5f, 0.7f, 1.0f);
 	}
 
-	// »ñµÃÕÕÉäµã¼°Æä·¨ÏòÁ¿
+	// èŽ·å¾—ç…§å°„ç‚¹åŠå…¶æ³•å‘é‡
 	glm::vec3 collidedPoint = pointAndSphere.first;
 	glm::vec3 normal = glm::normalize(collidedSpherePtr->calNormal(collidedPoint));
 
-	// Èô¹âÏß´ÓÎïÌåÄÚ²¿Éä³ö£¬·¨ÏòÁ¿È¡·´
+	// è‹¥å…‰çº¿ä»Žç‰©ä½“å†…éƒ¨å°„å‡ºï¼Œæ³•å‘é‡å–å
 	bool enterSphere = collidedSpherePtr->rayInSphere(ray);
 	if (enterSphere) {
 		normal = -normal;
 	}
 
-	// ¹â×·£º¾Ö²¿¹âÕÕÇ¿¶È
+	// å…‰è¿½ï¼šå±€éƒ¨å…‰ç…§å¼ºåº¦
 	if (!enterSphere) {
-		lightIntensity = collidedSpherePtr->material().kShade() * shade(*collidedSpherePtr, collidedPoint, ray);
+		lightIntensity = 0.6F * shade(*collidedSpherePtr, collidedPoint, ray);
 	}
 
-	// ¹â×·£º·´Éä¹âÕÕÇ¿¶È
-	glm::vec3 reflectDirection = glm::reflect(ray.direction(), normal);
-	lightIntensity += collidedSpherePtr->material().kReflect() * 
-		traceRay(Ray(collidedPoint, collidedPoint + reflectDirection), recursionTime + 1);
-
-	// ¹â×·£ºÕÛÉä¹âÕÕÇ¿¶È
+	// è²æ¶…å°”è¿‘ä¼¼å…¬å¼è®¡ç®—åå°„å…‰ä¸ŽæŠ˜å°„å…‰
 	float currentIndex = 1.0f;
 	float nextIndex = collidedSpherePtr->material().refractiveIndex();
 	if (enterSphere) {
-		// Èô¹âÏß´ÓÎïÌåÄÚ²¿Éä³ö£¬ÕÛÉäÂÊ½»»»
+		// è‹¥å…‰çº¿ä»Žç‰©ä½“å†…éƒ¨å°„å‡ºï¼ŒæŠ˜å°„çŽ‡äº¤æ¢
 		std::swap(currentIndex, nextIndex);
 	}
+	float kReflect = Schlick(normal, ray.direction(), currentIndex / nextIndex);
+	float kRefract = (1 - kReflect);
+
+	// å…‰è¿½ï¼šåå°„å…‰ç…§å¼ºåº¦
+	glm::vec3 reflectDirection = glm::reflect(ray.direction(), normal);
+	lightIntensity += 0.4f * kReflect * traceRay(Ray(collidedPoint, collidedPoint + reflectDirection), recursionTime + 1);
+
+	// å…‰è¿½ï¼šæŠ˜å°„å…‰ç…§å¼ºåº¦
 	glm::vec3 refractDirection = glm::refract(ray.direction(), normal, currentIndex / nextIndex);
-	lightIntensity += collidedSpherePtr->material().kRefract() * 
-		traceRay(Ray(collidedPoint, collidedPoint + refractDirection), recursionTime + 1);
+	lightIntensity += 0.4f * kRefract * traceRay(Ray(collidedPoint, collidedPoint + refractDirection), recursionTime + 1);
 	
 	return lightIntensity;
 }
