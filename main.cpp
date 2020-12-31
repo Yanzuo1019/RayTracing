@@ -88,35 +88,20 @@ int main() {
     ));
 
     // 初始化观察点照相机
-    glm::vec3 viewPos = glm::vec3(0.0f, 2.0f, 3.0f);
+    glm::vec3 viewPos = glm::vec3(0.0f, 1.0f, 3.0f);
     glm::vec3 viewFront = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 viewUp = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 viewRight = glm::normalize(glm::cross(viewFront, viewUp));
-
-    // 创建背景
+    
     scene.addSphere(new Sphere(
-        glm::vec3(0.0f, -100.0f, -5.0f),
+        glm::vec3(0.0f, -100.0f, 0.0f),
         100.0f,
-        DefaultMaterial::glass
+        DefaultMaterial::red_plastic
     ));
-
-    // 中间再放个红色塑料球
     scene.addSphere(new Sphere(
         glm::vec3(0.0f, 1.0f, 0.0f),
         1.0f,
-        DefaultMaterial::bronze
-    ));
-
-    scene.addSphere(new Sphere(
-        glm::vec3(2.0f, 1.0f, 0.0f),
-        1.0f,
         DefaultMaterial::cyan_plastic
-    ));
-
-    scene.addSphere(new Sphere(
-        glm::vec3(-2.0f, 1.0f, 0.0f),
-        1.0f,
-        DefaultMaterial::emerald
     ));
 
     // 主循环渲染画面

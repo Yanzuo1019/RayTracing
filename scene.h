@@ -6,7 +6,7 @@
 #include "sphere.h"
 #include "light.h"
 
-static const int MAX_RECURSION_TIME = 20;
+static const int MAX_RECURSION_TIME = 5;
 static const int SAMPLE_PER_PIXEL = 5;
 
 class Scene {

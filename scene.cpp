@@ -78,7 +78,7 @@ glm::vec3 Scene::traceRay(const Ray& ray, int recursionTime) {
 
 	// 光追：局部光照强度
 	if (!enterSphere) {
-		lightIntensity = 0.6F * shade(*collidedSpherePtr, collidedPoint, ray);
+		lightIntensity = 0.8f * shade(*collidedSpherePtr, collidedPoint, ray);
 	}
 
 	// 菲涅尔近似公式计算反射光与折射光
@@ -93,11 +93,11 @@ glm::vec3 Scene::traceRay(const Ray& ray, int recursionTime) {
 
 	// 光追：反射光照强度
 	glm::vec3 reflectDirection = glm::reflect(ray.direction(), normal);
-	lightIntensity += 0.4f * kReflect * traceRay(Ray(collidedPoint, collidedPoint + reflectDirection), recursionTime + 1);
+	lightIntensity += 0.2f * kReflect * traceRay(Ray(collidedPoint, collidedPoint + reflectDirection), recursionTime + 1);
 
 	// 光追：折射光照强度
 	glm::vec3 refractDirection = glm::refract(ray.direction(), normal, currentIndex / nextIndex);
-	lightIntensity += 0.4f * kRefract * traceRay(Ray(collidedPoint, collidedPoint + refractDirection), recursionTime + 1);
+	lightIntensity += 0.2f * kRefract * traceRay(Ray(collidedPoint, collidedPoint + refractDirection), recursionTime + 1);
 	
 	return lightIntensity;
 }
