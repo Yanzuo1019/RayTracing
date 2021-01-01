@@ -5,6 +5,8 @@
 #include <random>
 #include <vector>
 #include <cmath>
+#include <fstream>
+#include <string>
 
 #include "shader.h"
 #include "camera.h"
@@ -18,7 +20,7 @@ void processInput(GLFWwindow* window);
 const unsigned int SCR_WIDTH = 1200;
 const unsigned int SCR_HEIGHT = 800;
 constexpr int MAX_RECURSION_TIME = 10;
-constexpr int SAMPLE_PER_PIXEL = 1000;
+constexpr int SAMPLE_PER_PIXEL = 100;
 glm::vec3 col[SCR_WIDTH][SCR_HEIGHT];
 
 void vecPrint(glm::vec3 v) {
@@ -148,8 +150,13 @@ int main() {
     Camera cam(lookfrom, lookat, glm::vec3(0.0f, 1.0f, 0.0f), 20.0f, float(SCR_WIDTH) / float(SCR_HEIGHT));
 
     // 主循环渲染画面
+    std::string prefix("image_");
+    std::string ext(".ppm");
     for (int sample = 1; sample <= SAMPLE_PER_PIXEL; sample++) {
         std::cout << "SAMPLE TIMES: " << sample << std::endl;
+        std::string filename = prefix + std::to_string(sample) + ext;
+        std::ofstream of(filename);
+        of << "P3\n" << SCR_WIDTH << " " << SCR_HEIGHT << "\n255\n";
         if (!glfwWindowShouldClose(window)) {
             // 处理输入信息
             processInput(window);
@@ -175,6 +182,7 @@ int main() {
                     glm::vec3 c = color(r, world, cnt, 0);
                     c = glm::vec3(std::sqrt(c[0]), std::sqrt(c[1]), std::sqrt(c[2]));
                     col[i][j] = col[i][j] * float(sample - 1) / float(sample) + c / float(sample);
+                    of << int(255.99f * col[i][j].x) << " " << int(255.99f * col[i][j].y) << " " << int(255.99f * col[i][j].z) << "\n";
                     
                     shader.setVec3("vertexColor", col[i][j]);
                     glDrawArrays(GL_POINTS, 0, 1);
@@ -188,6 +196,7 @@ int main() {
         else {
             break;
         }
+        of.close();
     } 
 
     delete[] world;
