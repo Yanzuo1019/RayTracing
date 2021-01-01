@@ -5,8 +5,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-static const float FLOAT_INF = 100000000.0f;
-static const float FLOAT_EPS = 1e-4;
+static const float FLOAT_INF = 1e10f;
+static const float FLOAT_EPS = 1e-5f;
 
 class Ray {
 public:

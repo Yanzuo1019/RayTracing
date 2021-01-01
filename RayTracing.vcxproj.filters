@@ -24,18 +24,6 @@
     <ClCompile Include="sphere.h">
       <Filter>头文件</Filter>
     </ClCompile>
-    <ClCompile Include="light.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="sphere.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="scene.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="material.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shader.h">
@@ -47,10 +35,7 @@
     <ClInclude Include="material.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="light.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="scene.h">
+    <ClInclude Include="camera.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

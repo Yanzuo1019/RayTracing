@@ -3,33 +3,54 @@
 
 #include <iostream>
 #include <random>
+#include <vector>
+#include <cmath>
 
 #include "shader.h"
-#include "scene.h"
+#include "camera.h"
+#include "material.h"
+#include "ray.h"
+#include "sphere.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 
 const unsigned int SCR_WIDTH = 1200;
-const unsigned int SCR_HEIGHT = 675;
+const unsigned int SCR_HEIGHT = 800;
+constexpr int MAX_RECURSION_TIME = 15;
+constexpr int SAMPLE_PER_PIXEL = 5;
 
-glm::vec3 write_color(glm::vec3 pixel_color, int samples_per_pixel) {
-    auto r = pixel_color.x;
-    auto g = pixel_color.y;
-    auto b = pixel_color.z;
+glm::vec3 color(const Ray& ray, Sphere** world, int length, int depth) {
+    float minT = FLOAT_INF;
+    Sphere* collidedSphere = nullptr;
+    for (int i = 0; i < length; i++) {
+        float t = world[i]->rayCollision(ray);
+        if (t > FLOAT_EPS && t < minT) {
+            minT = t;
+            collidedSphere = world[i];
+        }
+    }
+    if (collidedSphere != nullptr) {
+        if (depth < MAX_RECURSION_TIME) {
+            auto ret = collidedSphere->material()->scatter(ray, collidedSphere, minT);
+            auto r = ret.first;
+            auto c = ret.second;
 
-    // Replace NaN components with zero. See explanation in Ray Tracing: The Rest of Your Life.
-    if (r != r) r = 0.0;
-    if (g != g) g = 0.0;
-    if (b != b) b = 0.0;
-
-    // Divide the color by the number of samples and gamma-correct for gamma=2.0.
-    float scale = 1.0 / samples_per_pixel;
-    r = sqrt(scale * r);
-    g = sqrt(scale * g);
-    b = sqrt(scale * b);
-
-    return glm::vec3(glm::clamp(r, 0.0f, 0.999f), glm::clamp(g, 0.0f, 0.999f), glm::clamp(b, 0.0f, 0.999f));
+            glm::vec3 result(0.0f);
+            for (int i = 0; i < r.size(); i++) {
+                result += c[i] * color(r[i], world, length, depth + 1);
+            }
+            return result;
+        }
+        else {
+            return glm::vec3(0.0f);
+        }
+    }
+    else {
+        if (ray.direction().y != ray.direction().y) return glm::vec3(0.0f);
+        float t = 0.5 * (ray.direction().y + 1.0);
+        return (1.0f - t) * glm::vec3(1.0f, 1.0f, 1.0f) + t * glm::vec3(0.5f, 0.7f, 1.0f);
+    }
 }
 
 int main() {
@@ -61,7 +82,7 @@ int main() {
     // 初始化随机数生成器
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> distribution(-1.0, 1.0);
+    std::uniform_real_distribution<float> distribution(0.0, 1.0);
 
     // 初始化顶点和片元着色器
     Shader shader("shader.vs", "shader.fs");
@@ -80,29 +101,60 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    // 初始化场景并设置一个光源
-    Scene scene;
-    scene.addLight(new Light(
-        glm::vec3(1.0f, 1.0f, 1.0f),
-        glm::vec3(100.0f, 100.0f, 100.0f)
-    ));
+    // 随机场景
+    int n = 500;
+    Sphere** world = new Sphere * [n];
+    world[0] = new Sphere(glm::vec3(0.0f, -1000.0f, 0.0f), 1000.0f,
+        new Lambertian(glm::vec3(0.5f, 0.5f, 0.5f)));
+    int cnt = 1;
+    for (int a = -11; a < 11; a++) {
+        for (int b = -11; b < 11; b++) {
+            float choose_mat = distribution(gen);
+            glm::vec3 center(a + 0.9f * distribution(gen), 0.2,
+                b + 0.9 * distribution(gen));
+            auto tmp = center - glm::vec3(4.0f, 0.2f, 0.0f);
+            if (std::sqrt(glm::dot(tmp, tmp)) > 0.9f) {
+                if (choose_mat < 0.8f) { // diffuse
+                    world[cnt++] = new Sphere(
+                        center, 0.2,
+                        new Lambertian(glm::vec3(
+                            distribution(gen) * distribution(gen),
+                            distribution(gen) * distribution(gen),
+                            distribution(gen) * distribution(gen)))
+                    );
+                }
+                else if (choose_mat < 0.95f) { // metal
+                    world[cnt++] = new Sphere(
+                        center, 0.2,
+                        new Metal(glm::vec3(
+                            0.5f * (1.0f + distribution(gen)),
+                            0.5f * (1.0f + distribution(gen)),
+                            0.5f * (1.0f + distribution(gen))))
+                    );
+                }
+                else // glass
+                {
+                    world[cnt++] = new Sphere(
+                        center, 0.2f, new Dielectric(1.5f)
+                    );
+                }
+            }
+        }
+    }
 
-    // 初始化观察点照相机
-    glm::vec3 viewPos = glm::vec3(0.0f, 1.0f, 3.0f);
-    glm::vec3 viewFront = glm::vec3(0.0f, 0.0f, -1.0f);
-    glm::vec3 viewUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 viewRight = glm::normalize(glm::cross(viewFront, viewUp));
-    
-    scene.addSphere(new Sphere(
-        glm::vec3(0.0f, -100.0f, 0.0f),
-        100.0f,
-        DefaultMaterial::red_plastic
-    ));
-    scene.addSphere(new Sphere(
-        glm::vec3(0.0f, 1.0f, 0.0f),
-        1.0f,
-        DefaultMaterial::cyan_plastic
-    ));
+    world[cnt++] = new Sphere(glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 
+        new Dielectric(1.5f));
+    world[cnt++] = new Sphere(glm::vec3(-4.0f, 1.0f, 0.0f), 1.0f, 
+        new Lambertian(glm::vec3(0.4f, 0.2f, 0.1f)));
+    world[cnt++] = new Sphere(glm::vec3(4.0f, 1.0f, 0.0f), 1.0f, 
+        new Metal(glm::vec3(0.7f, 0.6f, 0.5f)));
+
+    // 观察点
+    glm::vec3 lookfrom(13.0f, 2.0f, 3.0f);
+    glm::vec3 lookat(0.0f, 0.0f, 0.0f);
+
+    Camera cam(lookfrom, lookat, glm::vec3(0.0f, 1.0f, 0.0f), 90.0f, 
+        float(SCR_WIDTH) / float(SCR_HEIGHT));
 
     // 主循环渲染画面
     while (!glfwWindowShouldClose(window)) {
@@ -120,22 +172,21 @@ int main() {
         // 枚举屏幕上每一个像素
         for (int j = SCR_HEIGHT - 1; j >= 0; j--) {
             for (int i = 0; i < SCR_WIDTH; i++) {
-                // 将坐标映射到NDC[-1,1]
-                glm::vec3 pos(float(i) * 2 / SCR_WIDTH - 1.0f, float(j) * 2 / SCR_HEIGHT - 1.0f, 0.0f);
+                glm::vec2 pos(float(i) * 2.0f / SCR_WIDTH - 1.0f, float(j) * 2.0f / SCR_HEIGHT - 1.0f);
                 shader.setVec2("screenPos", pos.x, pos.y);
 
-                glm::vec3 pixel_color(0.0f);
+                glm::vec3 col(0.0f);
                 for (int s = 0; s < SAMPLE_PER_PIXEL; s++) {
-                    auto u = pos.x + distribution(gen) / SCR_WIDTH;
-                    auto v = pos.y + distribution(gen) / SCR_HEIGHT;
-                    glm::vec3 globalPos = viewPos + viewFront + u * viewRight * (float(SCR_WIDTH) / SCR_HEIGHT) + v * viewUp;
-                    Ray r(viewPos, globalPos);
-                    pixel_color = pixel_color + scene.traceRay(r, 0);
+                    float u = float(i + distribution(gen)) / float(SCR_WIDTH);
+                    float v = float(j + distribution(gen)) / float(SCR_HEIGHT);
+                    Ray r = cam.get_ray(u, v);
+                    col += color(r, world, cnt, MAX_RECURSION_TIME);
                 }
-                
-                // 绘制该点的像素
-                glm::vec3 color = write_color(pixel_color, SAMPLE_PER_PIXEL);
-                shader.setVec3("vertexColor", color);
+
+                col /= float(SAMPLE_PER_PIXEL);
+                col = glm::vec3(std::sqrt(col[0]), std::sqrt(col[1]), std::sqrt(col[2]));
+                //std::cout << col.x << " " << col.y << " " << col.z << std::endl;
+                shader.setVec3("vertexColor", col);
                 glDrawArrays(GL_POINTS, 0, 1);
             }
         }
@@ -145,6 +196,7 @@ int main() {
         glfwPollEvents();
     }
 
+    delete[] world;
     glfwTerminate();
     return 0;
 }
