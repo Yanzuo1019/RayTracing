@@ -13,8 +13,7 @@ constexpr float PI = 3.14159265358979323846;
 
 class Camera {
 public:
-	Camera(glm::vec3 lookfrom, glm::vec3 lookat, glm::vec3 vup, 
-		float vfov, float aspect) {
+	Camera(glm::vec3 lookfrom, glm::vec3 lookat, glm::vec3 vup, float vfov, float aspect) {
 		glm::vec3 u, v, w;
 		float theta = vfov * PI / 180.0f;
 		float half_height = std::tan(theta / 2);

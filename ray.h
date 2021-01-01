@@ -6,7 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 static const float FLOAT_INF = 1e10f;
-static const float FLOAT_EPS = 1e-5f;
+static const float FLOAT_EPS = 1e-3f;
 
 class Ray {
 public:

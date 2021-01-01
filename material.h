@@ -120,9 +120,9 @@ public:
 
 private:
 	float schlick(float cosine) {
-		float r0 = (1 - _reflectIdx) / (1 + _reflectIdx);
+		float r0 = (1.0f - _reflectIdx) / (1.0f + _reflectIdx);
 		r0 = r0 * r0;
-		return r0 + (1 - r0) * std::pow((1 - cosine), 5);
+		return r0 + (1.0f - r0) * std::pow((1 - cosine), 5.0f);
 	}
 
 	float _reflectIdx;
